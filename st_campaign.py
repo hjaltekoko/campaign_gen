@@ -14,7 +14,6 @@ category_mapping = {
     "Mens Shirts": "Skjorter",
     "Mens Underwear & Socks": "Herreundertøj",
     "Mens Leather & Access": "Accessories",
-    "Mens Premium & Exclusive": "Herretøj",
     "Womens Contemporary Fashion": "Dametøj",
     "Womens Fast Fashion": "Dametøj",
     "Womens Urban": "Dametøj",
@@ -52,18 +51,30 @@ HEADLINES_DANISH = {
         "20-50% på masser af brands"
     ],
     "Headline 3": [
+        "Spar {rabat} på {brand}",
+        "Spar {rabat}"
+    ],
+    "Headline 4": [
+        "Få {rabat} på {brand}",
+        "Få {rabat}"
+    ],
+    "Headline 5": [
+        "{rabat} på {brand}",
+        "{rabat} i Magasin"
+    ],
+    "Headline 6": [
         "Tilbud på {brand} til Super Bazaar",
         "Super Bazaar-tilbud på {brand}",
         "{rabat} på {brand} til Super Bazaar",
         "Tilbud på masser af {brand}",
         "Tilbud til Super Bazaar",
     ],
-    "Headline 4": [
+    "Headline 7": [
         "Få {rabat} på {brand} i Magasin",
         "{rabat} på {brand} i Magasin",
         "Super Bazaar i Magasin",
     ],
-    "Headline 5": lambda row: [
+    "Headline 8": lambda row: [
         "Gælder til d. 8./10." if row['period'] in ["12", 12] else
         "Gælder til d. 1./10." if row['period'] in ["5", 5] else
         "Gælder kun d. 27." if row['period'] == "Onsdag" else
