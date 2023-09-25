@@ -297,7 +297,7 @@ def main():
         # Step 3: Combine 'Labels#original' and 'Labels' columns
         df_merged['Labels'] = df_merged.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
         
-        df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period'], inplace=True)
+        df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','numeric_percentage'], inplace=True)
 
         # Display the merged DataFrame
         st.write(df_merged)
