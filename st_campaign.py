@@ -276,10 +276,14 @@ def main():
     if uploaded_file and existing_ads_file:
         df_new_ads = pd.read_excel(uploaded_file)
         df_existing_ads = pd.read_excel(existing_ads_file)
+        
+        df_tilbud = df_existing_ads[df_existing_ads['Labels'].str.contains("Variant: Tilbud", case=False, na=False)]
 
+        df_normal = df_existing_ads[~df_existing_ads['Labels'].str.contains("Variant: Tilbud", case=False, na=False)]
+        
         # Rename the columns in existing ads DataFrame to add "#original" to the end of column names where applicable
-        original_cols_rename = {col: f"{col}#original" for col in df_existing_ads.columns if "Headline" in col or "Description" in col}
-        df_existing_ads.rename(columns=original_cols_rename, inplace=True)
+        original_cols_rename = {col: f"{col}#original" for col in df_existing_ads.columns if ("Headline" in col or "Description" in col) and "position" not in col}
+        df_tilbud.rename(columns=original_cols_rename, inplace=True)
 
         # Generate Texts for New Ads
         df_new_ads = generate_texts(df_new_ads, edited_headlines, edited_descriptions)
@@ -289,31 +293,43 @@ def main():
         df_new_ads = df_new_ads.groupby(['brand']).apply(filter_rows).reset_index(drop=True)
         
         # Step 1: Rename the 'label' column in the original ads DataFrame
-        df_existing_ads.rename(columns={"Labels": "Labels#original"}, inplace=True)
+        df_tilbud.rename(columns={"Labels": "Labels#original"}, inplace=True)
+
+        df_normal.rename(columns={"Labels": "Labels#original"}, inplace=True)
 
         # Step 2: Perform the merge
-        df_merged = pd.merge(df_existing_ads, df_new_ads, how='outer', left_on='Ad Group', right_on='brand')
+        df_merged = pd.merge(df_tilbud, df_new_ads, how='outer', left_on='Ad Group', right_on='brand')
 
         # Step 3: Combine 'Labels#original' and 'Labels' columns
         df_merged['Labels'] = df_merged.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
         
         df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','numeric_percentage'], inplace=True)
 
+        df_normal_merge = df_normal.merge(df_new_ads[['brand', 'Labels']], left_on='Ad Group', right_on='brand', how='left')
+
+        df_normal_merge['Labels'] = df_normal_merge.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
+
+        df_normal_merge.drop(columns=['brand'],inplace=True)
+
         # Display the merged DataFrame
         st.write(df_merged)
 
+        st.write(df_normal_merge)
+
         # Adding a button to download the merged dataframe as an Excel file
-        if st.button('Download Merged Data as Excel'):
+        # Adding a button to download the merged dataframe as an Excel file
+        if st.button('Download Data as Excel'):
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df_merged.to_excel(writer, index=False)
+                df_merged.to_excel(writer, sheet_name='Merged', index=False)
+                df_normal_merge.to_excel(writer, sheet_name='Normal Merge', index=False)
             output.seek(0)
             
             st.download_button(
-                label="Download Merged Data as Excel",
+                label="Download Data as Excel",
                 data=output.getvalue(),
-                file_name='merged_data.xlsx',
-                key='download_excel_merged'
+                file_name='data.xlsx',
+                key='download_excel'
             )
 
 if __name__ == "__main__":
