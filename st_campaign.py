@@ -222,10 +222,10 @@ def filter_rows(group):
         return group
     else:  # If more than one row in the group
         # 1. Prefer multi-day campaigns over one-day campaigns
-        non_one_day_group = group[~group['label'].str.contains('one', case=False, na=False)]
+        non_one_day_group = group[~group['Labels'].str.contains('one', case=False, na=False)]
         if not non_one_day_group.empty:
             # 2. Prefer 12-day campaigns over 5-day campaigns within multi-day campaigns
-            twelve_day_group = non_one_day_group[non_one_day_group['label'].str.contains('12', case=False, na=False)]
+            twelve_day_group = non_one_day_group[non_one_day_group['Labels'].str.contains('12', case=False, na=False)]
             if not twelve_day_group.empty:
                 # 3. Prefer specific percentages over "20-50%" within 12-day campaigns
                 specific_percentage_group = twelve_day_group[~twelve_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
@@ -241,7 +241,7 @@ def filter_rows(group):
                 return specific_percentage_group if not specific_percentage_group.empty else non_one_day_group
         else:
             # 2. Prefer 12-day campaigns over 5-day campaigns within one-day campaigns
-            twelve_day_group = group[group['label'].str.contains('12', case=False, na=False)]
+            twelve_day_group = group[group['Labels'].str.contains('12', case=False, na=False)]
             if not twelve_day_group.empty:
                 # 3. Prefer specific percentages over "20-50%" within 12-day one-day campaigns
                 specific_percentage_group = twelve_day_group[~twelve_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
@@ -292,7 +292,7 @@ def main():
         # Step 2: Perform the merge
         df_merged = pd.merge(df_existing_ads, df_new_ads, how='outer', left_on='Ad Group', right_on='brand')
 
-        # Step 3: Combine 'label#original' and 'label' columns
+        # Step 3: Combine 'Labels#original' and 'Labels' columns
         df_merged['Labels'] = df_merged.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
         
         df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period'], inplace=True)
