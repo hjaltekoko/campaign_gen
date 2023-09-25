@@ -266,9 +266,11 @@ def main():
     if option == "Danish":
         edited_headlines = display_and_edit_templates(HEADLINES_DANISH, 30)
         edited_descriptions = display_and_edit_templates(DESCRIPTIONS_DANISH, 90)
+        filter_string = "Variant: Tilbud"  # Use Danish filter string
     else:
         edited_headlines = display_and_edit_templates(HEADLINES_SWEDISH, 30)
         edited_descriptions = display_and_edit_templates(DESCRIPTIONS_SWEDISH, 90)
+        filter_string = "AD: SALE"  # Use Swedish filter string
 
     uploaded_file = st.file_uploader("Choose an Excel file for New Ads", type="xlsx")
     existing_ads_file = st.file_uploader("Choose an Excel file for Existing Ads", type="xlsx")
@@ -277,9 +279,8 @@ def main():
         df_new_ads = pd.read_excel(uploaded_file)
         df_existing_ads = pd.read_excel(existing_ads_file)
         
-        df_tilbud = df_existing_ads[df_existing_ads['Labels'].str.contains("Variant: Tilbud", case=False, na=False)]
-
-        df_normal = df_existing_ads[~df_existing_ads['Labels'].str.contains("Variant: Tilbud", case=False, na=False)]
+        df_tilbud = df_existing_ads[df_existing_ads['Labels'].str.contains(filter_string, case=False, na=False)]
+        df_normal = df_existing_ads[~df_existing_ads['Labels'].str.contains(filter_string, case=False, na=False)]
         
         # Rename the columns in existing ads DataFrame to add "#original" to the end of column names where applicable
         original_cols_rename = {col: f"{col}#original" for col in df_existing_ads.columns if ("Headline" in col or "Description" in col) and "position" not in col}
