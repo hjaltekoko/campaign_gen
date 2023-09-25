@@ -286,6 +286,8 @@ def main():
 
         df_new_ads.rename(columns={"label": "Labels"}, inplace=True)
 
+        df_new_ads = df_new_ads.groupby(['brand']).apply(filter_rows).reset_index(drop=True)
+        
         # Step 1: Rename the 'label' column in the original ads DataFrame
         df_existing_ads.rename(columns={"Labels": "Labels#original"}, inplace=True)
 
