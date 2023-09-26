@@ -78,8 +78,8 @@ HEADLINES_DANISH = {
         "Gælder til d. 8./10." if row['period'] in ["12", 12] else
         "Gælder til d. 1./10." if row['period'] in ["5", 5] else
         "Gælder kun d. 27." if row['period'] == "Onsdag" else
-        "Gælder kun d. 30." if row['period'] == "Fredag" else
-        "Gælder kun d. 1." if row['period'] == "Lørdag" else
+        "Gælder kun d. 29." if row['period'] == "Fredag" else
+        "Gælder kun d. 30." if row['period'] == "Lørdag" else
         ""
     ]
 }
@@ -122,8 +122,8 @@ HEADLINES_SWEDISH = {
         "Gäller fram till den 8/10" if row['period'] in ["12", 12] else
         "Gäller fram till den 1/10" if row['period'] in ["5", 5] else
         "Gäller bara idag den 27/9" if row['period'] == "Onsdag" else
-        "Gäller bara idag den 30/9" if row['period'] == "Fredag" else
-        "Gäller bara idag den 1/10" if row['period'] == "Lørdag" else
+        "Gäller bara idag den 29/9" if row['period'] == "Fredag" else
+        "Gäller bara idag den 30/9" if row['period'] == "Lørdag" else
         ""
     ]
 }
@@ -270,7 +270,7 @@ def main():
     else:
         edited_headlines = display_and_edit_templates(HEADLINES_SWEDISH, 30)
         edited_descriptions = display_and_edit_templates(DESCRIPTIONS_SWEDISH, 90)
-        filter_string = "AD-SALE"  # Use Swedish filter string
+        filter_string = "AD-SALE"   # Use Swedish filter string
 
     uploaded_file = st.file_uploader("Choose an Excel file for New Ads", type="xlsx")
     existing_ads_file = st.file_uploader("Choose an Excel file for Existing Ads", type="xlsx")
