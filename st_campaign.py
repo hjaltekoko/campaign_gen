@@ -270,7 +270,7 @@ def main():
     else:
         edited_headlines = display_and_edit_templates(HEADLINES_SWEDISH, 30)
         edited_descriptions = display_and_edit_templates(DESCRIPTIONS_SWEDISH, 90)
-        filter_string = "AD: SALE"  # Use Swedish filter string
+        filter_string = "AD-SALE"  # Use Swedish filter string
 
     uploaded_file = st.file_uploader("Choose an Excel file for New Ads", type="xlsx")
     existing_ads_file = st.file_uploader("Choose an Excel file for Existing Ads", type="xlsx")
