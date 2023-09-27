@@ -88,7 +88,7 @@ DESCRIPTIONS_DANISH = {
         "Kom til Super Bazaar i Magasin og få {rabat} på {brand}",
     ],
     "Description 2": [
-        "Lige nu får du {rabat} på {brand} - {Headline 5}",
+        "Lige nu får du {rabat} på {brand} - {Headline 8}",
     ],
 }
 HEADLINES_SWEDISH = {
