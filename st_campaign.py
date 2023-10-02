@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import io
+from collections import Counter
+import itertools
 
 category_mapping = {
     "Kids Clothes": "Børnetøj",
@@ -256,29 +258,50 @@ def filter_rows(group):
                 specific_percentage_group = group[~group['rabat'].str.contains('20-50%', case=False, na=False)]
                 return specific_percentage_group if not specific_percentage_group.empty else group
 
-
-
-def main():
-    st.title("Generate Headlines and Descriptions for Brands")
-
-    option = st.selectbox("Choose a language for templates", ["Danish", "Swedish"])
-
-    if option == "Danish":
-        edited_headlines = display_and_edit_templates(HEADLINES_DANISH, 30)
-        edited_descriptions = display_and_edit_templates(DESCRIPTIONS_DANISH, 90)
-        filter_string = "Variant: Tilbud"  # Use Danish filter string
-    else:
-        edited_headlines = display_and_edit_templates(HEADLINES_SWEDISH, 30)
-        edited_descriptions = display_and_edit_templates(DESCRIPTIONS_SWEDISH, 90)
-        filter_string = "AD-SALE"   # Use Swedish filter string
-
-    uploaded_file = st.file_uploader("Choose an Excel file for New Ads", type="xlsx")
-    existing_ads_file = st.file_uploader("Choose an Excel file for Existing Ads", type="xlsx")
-
-    if uploaded_file and existing_ads_file:
-        df_new_ads = pd.read_excel(uploaded_file)
-        df_existing_ads = pd.read_excel(existing_ads_file)
+def merging(df_new_ads,df_tilbud,df_normal,merge_type):
+    df_merged = pd.merge(df_tilbud.assign(temp_key=df_tilbud['Ad Group'].str.lower()), 
+                df_new_ads.assign(temp_key=df_new_ads['brand'].str.lower()), 
+                how='inner', 
+                left_on='temp_key', 
+                right_on='temp_key')
+    if merge_type == "Advanced":
+        df_tilbud_unmatched = df_tilbud[~df_tilbud['Ad Group'].str.lower().isin(df_merged['temp_key'])]
+        df_new_ads_unmatched = df_new_ads[~df_new_ads['brand'].str.lower().isin(df_merged['temp_key'])]
         
+        # Count Word Occurrences and get unique words
+        word_counts = Counter(itertools.chain(*df_new_ads_unmatched['brand'].str.lower().str.split()))
+        unique_words = {word for word, count in word_counts.items() if count == 1}
+        
+        # Create helper columns for unmatched rows using unique words only
+        df_tilbud_unmatched['brand_words'] = df_tilbud_unmatched['Ad Group'].apply(lambda x: set(str(x).lower().split()) & unique_words)
+        df_new_ads_unmatched['brand_words'] = df_new_ads_unmatched['brand'].apply(lambda x: set(str(x).lower().split()) & unique_words)
+        
+        # Initialize a list to hold the rows of the merged DataFrame
+        merged_rows = []
+        for _, row1 in df_tilbud_unmatched.iterrows():
+            for _, row2 in df_new_ads_unmatched.iterrows():
+                if len(row1['brand_words'].intersection(row2['brand_words'])) > 0:
+                    merged_row = row1.drop('brand_words').append(row2.drop('brand_words'))
+                    merged_rows.append(merged_row)
+        
+        # Construct the merged DataFrame from complex match
+        df_complex_matched = pd.DataFrame(merged_rows)
+        
+        # Concatenate the results of the exact match and the complex match
+        df_merged = pd.concat([df_merged, df_complex_matched], ignore_index=True)
+
+    df_normal_merge = pd.merge(df_merged[['Ad Group', 'Labels']],df_normal, on='Ad Group')
+
+    df_normal_merge['Labels'] = df_normal_merge.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
+    
+    # Step 3: Combine 'Labels#original' and 'Labels' columns
+    df_merged['Labels'] = df_merged.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
+    
+    df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','numeric_percentage','temp_key'], inplace=True)
+
+    return df_merged,df_normal_merge
+
+def data_clean(df_new_ads,df_existing_ads,filter_string, edited_headlines, edited_descriptions):
         df_tilbud = df_existing_ads[df_existing_ads['Labels'].str.contains(filter_string, case=False, na=False)]
         df_normal = df_existing_ads[~df_existing_ads['Labels'].str.contains(filter_string, case=False, na=False)]
         
@@ -297,20 +320,34 @@ def main():
         df_tilbud.rename(columns={"Labels": "Labels#original"}, inplace=True)
 
         df_normal.rename(columns={"Labels": "Labels#original"}, inplace=True)
+        return df_new_ads,df_tilbud,df_normal
 
-        # Step 2: Perform the merge
-        df_merged = pd.merge(df_tilbud, df_new_ads, how='outer', left_on='Ad Group', right_on='brand')
+def main():
+    st.title("Generate Headlines and Descriptions for Brands")
 
-        # Step 3: Combine 'Labels#original' and 'Labels' columns
-        df_merged['Labels'] = df_merged.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
+    option = st.selectbox("Choose a language for templates", ["Danish", "Swedish"])
+
+    if option == "Danish":
+        edited_headlines = display_and_edit_templates(HEADLINES_DANISH, 30)
+        edited_descriptions = display_and_edit_templates(DESCRIPTIONS_DANISH, 90)
+        filter_string = "Variant: Tilbud"  # Use Danish filter string
+    else:
+        edited_headlines = display_and_edit_templates(HEADLINES_SWEDISH, 30)
+        edited_descriptions = display_and_edit_templates(DESCRIPTIONS_SWEDISH, 90)
+        filter_string = "AD-SALE"   # Use Swedish filter string
+
+    merge_type = st.selectbox("Choose Merge Type", ["Default", "Advanced"])
+
+    uploaded_file = st.file_uploader("Choose an Excel file for New Ads", type="xlsx")
+    existing_ads_file = st.file_uploader("Choose an Excel file for Existing Ads", type="xlsx")
+
+    if uploaded_file and existing_ads_file:
+        df_new_ads = pd.read_excel(uploaded_file)
+        df_existing_ads = pd.read_excel(existing_ads_file)
+
+        df_new_ads,df_tilbud,df_normal = data_clean(df_new_ads,df_existing_ads,filter_string, edited_headlines, edited_descriptions)
         
-        df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','numeric_percentage'], inplace=True)
-
-        df_normal_merge = df_normal.merge(df_new_ads[['brand', 'Labels']], left_on='Ad Group', right_on='brand', how='left')
-
-        df_normal_merge['Labels'] = df_normal_merge.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
-
-        df_normal_merge.drop(columns=['brand'],inplace=True)
+        df_merged,df_normal_merge = merging(df_new_ads,df_tilbud,df_normal,merge_type)
 
         # Display the merged DataFrame
         st.write(df_merged)
