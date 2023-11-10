@@ -3,8 +3,6 @@ import pandas as pd
 import io
 from collections import Counter
 import itertools
-from oauth2client.service_account import ServiceAccountCredentials
-import gspread
 
 category_mapping = {
     "Kids Clothes": "Børnetøj",
@@ -51,7 +49,7 @@ category_mapping = {
 # Initial templates
 HEADLINES_DANISH = {
     "Headline 2": [
-        "{rabat} til {type} i Magasin",
+        "{rabat} til Super Bazaar i Magasin",
         "20-50% på masser af brands"
     ],
     "Headline 3": [
@@ -67,26 +65,29 @@ HEADLINES_DANISH = {
         "{rabat} i Magasin"
     ],
     "Headline 6": [
-        "Tilbud på {brand} til {type}",
-        "{type}-tilbud på {brand}",
-        "{rabat} på {brand} til {type}",
+        "Tilbud på {brand} til Super Bazaar",
+        "Super Bazaar-tilbud på {brand}",
+        "{rabat} på {brand} til Super Bazaar",
         "Tilbud på masser af {brand}",
-        "Tilbud til {type}",
+        "Tilbud til Super Bazaar",
     ],
     "Headline 7": [
         "Få {rabat} på {brand} i Magasin",
         "{rabat} på {brand} i Magasin",
-        "{type} i Magasin",
+        "Super Bazaar i Magasin",
     ],
     "Headline 8": lambda row: [
-        "Gäller fram till den 26/11" if row['period'] in ["10", 10,"15", 5,"3", 3] else
-        "Gäller bara idag Black Friday" if row['period'] == "bf" else
+        "Gælder til d. 8./10." if row['period'] in ["12", 12] else
+        "Gælder til d. 1./10." if row['period'] in ["5", 5] else
+        "Gælder kun d. 27." if row['period'] == "Onsdag" else
+        "Gælder kun d. 29." if row['period'] == "Fredag" else
+        "Gælder kun d. 30." if row['period'] == "Lørdag" else
         ""
     ]
 }
 DESCRIPTIONS_DANISH = {
     "Description 1": [
-        "Kom til {type} i Magasin og få {rabat} på {brand}",
+        "Kom til Super Bazaar i Magasin og få {rabat} på {brand}",
     ],
     "Description 2": [
         "Lige nu får du {rabat} på {brand} - {Headline 8}",
@@ -109,19 +110,22 @@ HEADLINES_SWEDISH = {
         "Spara {rabat}",
     ],
     "Headline 5": [  # Add more Swedish templates here
-        "{rabat} på {type}",
+        "{rabat} på Mid Season Sale",
     ],
     "Headline 6": [  # Add more Swedish templates here
-        "Köp {brand} på {type}",
-        "{brand} på {type}",
-        "{type}-erbjudanden",
+        "Köp {brand} på Mid Season Sale",
+        "{brand} på Mid Season Sale",
+        "Mid Season Sale-erbjudanden",
     ],
     "Headline 7": [  # Add more Swedish templates here
-        "{type} på Magasin.se",
+        "Mid Season Sale på Magasin.se",
     ],
     "Headline 8": lambda row: [
-        "Gäller fram till den 26/11" if row['period'] in ["10", 10,"15", 5,"3", 3] else
-        "Gäller bara idag Black Friday" if row['period'] == "bf" else
+        "Gäller fram till den 8/10" if row['period'] in ["12", 12] else
+        "Gäller fram till den 1/10" if row['period'] in ["5", 5] else
+        "Gäller bara idag den 27/9" if row['period'] == "Onsdag" else
+        "Gäller bara idag den 29/9" if row['period'] == "Fredag" else
+        "Gäller bara idag den 30/9" if row['period'] == "Lørdag" else
         ""
     ]
 }
@@ -130,56 +134,27 @@ DESCRIPTIONS_SWEDISH = {
         "Just nu får du {rabat} på {brand} på Magasin.se",
     ],
     "Description 2": [
-        "{type} är i gång med 20-50% på tusentals märkesvaror",
+        "Mid Season Sale är i gång med 20-50% på tusentals märkesvaror",
     ],
 }
 
 # Mapping for creating labels based on the 'period' column
 period_label_mapping = {
-    10: "black_week_10",
-    5: "black_week_5",
-    3: "black_weekend_3",
-    'bf': "black_friday_1",
+    12: "sb_12_day",
+    5: "sb_5_day",
+    "Onsdag": "sb_ons_oneday",
+    "Fredag": "sb_fre_oneday",
+    "Lørdag": "sb_loer_oneday"
 }
-# Mapping for creating communication variable based on the 'period' column
-period_type_mapping = {
-    10: "Black Week",
-    5: "Black Week",
-    3: "Black Weekend",
-    'bf': "Black Friday",
-}
-
-
-# Set up credentials
-scope = [
-    'https://spreadsheets.google.com/feeds',
-    'https://www.googleapis.com/auth/drive'
-]
-
-# Retrieve the secrets from st.secrets
-secrets_dict = {
-    "type": st.secrets["type"],
-    "project_id": st.secrets["project_id"],
-    "private_key_id": st.secrets["private_key_id"],
-    "private_key": st.secrets["private_key"],
-    "client_email": st.secrets["client_email"],
-    "client_id": st.secrets["client_id"],
-    "auth_uri": st.secrets["auth_uri"],
-    "token_uri": st.secrets["token_uri"],
-    "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-    "client_x509_cert_url": st.secrets["client_x509_cert_url"],
-    # Add any other fields you have in secrets.toml
-}
-
-# Use the from_json_keyfile_dict method
-creds = ServiceAccountCredentials.from_json_keyfile_dict(secrets_dict, scope)
-client = gspread.authorize(creds)
-
 
 def generate_texts(df, headlines, descriptions):
     df.rename(columns={"Rabat%_y": "period"}, inplace=True)
     df.rename(columns={"Ws navn": "brand"}, inplace=True)
     df.rename(columns={"Rabat%_x": "rabat"}, inplace=True)
+
+    # Convert numeric 'rabat' values to percentage strings
+    df.loc[df['rabat'].apply(lambda x: isinstance(x, (int, float))), 'rabat'] = (df["rabat"] * 100).astype(str) + "%"
+    df["rabat"] = df["rabat"].str.replace(".0%", "%", regex=True)
     
     # Define a function to check whether a string represents a valid percentage
     def is_percentage(s):
@@ -195,8 +170,7 @@ def generate_texts(df, headlines, descriptions):
     
     # Replace non-percentage 'rabat' values with "20-50%"
     df.loc[~df['rabat'].apply(is_percentage), 'rabat'] = "20-50%"
-    df["type"] = df["period"].map(period_type_mapping)
-
+    
     def generate_ad_text(row, templates, threshold):
         if callable(templates):  # Check if the templates are a function (lambda)
             templates = templates(row)  # Call the function to get the actual templates
@@ -250,26 +224,26 @@ def filter_rows(group):
         return group
     else:  # If more than one row in the group
         # 1. Prefer multi-day campaigns over one-day campaigns
-        non_one_day_group = group[~group['Labels'].str.contains('black_friday', case=False, na=False)]
+        non_one_day_group = group[~group['Labels'].str.contains('one', case=False, na=False)]
         if not non_one_day_group.empty:
             # 2. Prefer 12-day campaigns over 5-day campaigns within multi-day campaigns
-            twelve_day_group = non_one_day_group[non_one_day_group['Labels'].str.contains('10', case=False, na=False)]
+            twelve_day_group = non_one_day_group[non_one_day_group['Labels'].str.contains('12', case=False, na=False)]
             if not twelve_day_group.empty:
-                # 3. Prefer specific percentages over "20-50%" within 10-day campaigns
+                # 3. Prefer specific percentages over "20-50%" within 12-day campaigns
                 specific_percentage_group = twelve_day_group[~twelve_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
                 if not specific_percentage_group.empty:
-                    # 4. Prefer the lowest percentage within specific percentage 10-day campaigns
+                    # 4. Prefer the lowest percentage within specific percentage 12-day campaigns
                     specific_percentage_group['numeric_percentage'] = specific_percentage_group['rabat'].str.rstrip('%').astype(float)
                     return specific_percentage_group.nsmallest(1, 'numeric_percentage')
                 else:
                     return twelve_day_group
             else:
-                # 3. Prefer specific percentages over "20-50%" within multi-day campaigns other than 10-day campaigns
+                # 3. Prefer specific percentages over "20-50%" within multi-day campaigns other than 12-day campaigns
                 specific_percentage_group = non_one_day_group[~non_one_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
                 return specific_percentage_group if not specific_percentage_group.empty else non_one_day_group
         else:
-            # 2. Prefer 10-day campaigns over 5-day campaigns within one-day campaigns
-            twelve_day_group = group[group['Labels'].str.contains('10', case=False, na=False)]
+            # 2. Prefer 12-day campaigns over 5-day campaigns within one-day campaigns
+            twelve_day_group = group[group['Labels'].str.contains('12', case=False, na=False)]
             if not twelve_day_group.empty:
                 # 3. Prefer specific percentages over "20-50%" within 12-day one-day campaigns
                 specific_percentage_group = twelve_day_group[~twelve_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
@@ -312,11 +286,9 @@ def merging(df_new_ads,df_tilbud,df_normal,merge_type):
         
         # Construct the merged DataFrame from complex match
         df_complex_matched = pd.DataFrame(merged_rows)
-
+        
         # Concatenate the results of the exact match and the complex match
         df_merged = pd.concat([df_merged, df_complex_matched], ignore_index=True)
-
-    df_merged = df_merged.drop_duplicates(subset=['Ad Group'], keep='first')
 
     df_normal_merge = pd.merge(df_merged[['Ad Group', 'Labels']],df_normal, on='Ad Group')
 
@@ -325,13 +297,13 @@ def merging(df_new_ads,df_tilbud,df_normal,merge_type):
     # Step 3: Combine 'Labels#original' and 'Labels' columns
     df_merged['Labels'] = df_merged.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
     
-    df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','numeric_percentage','temp_key','type'], inplace=True)
+    df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','numeric_percentage','temp_key'], inplace=True)
 
     return df_merged,df_normal_merge
 
-def data_clean(df_new_ads,df_existing_ads,filter_string,normal_filter_string, edited_headlines, edited_descriptions):
+def data_clean(df_new_ads,df_existing_ads,filter_string, edited_headlines, edited_descriptions):
         df_tilbud = df_existing_ads[df_existing_ads['Labels'].str.contains(filter_string, case=False, na=False)]
-        df_normal = df_existing_ads[df_existing_ads['Labels'].str.contains(normal_filter_string, case=False, na=False)]
+        df_normal = df_existing_ads[~df_existing_ads['Labels'].str.contains(filter_string, case=False, na=False)]
         
         # Rename the columns in existing ads DataFrame to add "#original" to the end of column names where applicable
         original_cols_rename = {col: f"{col}#original" for col in df_existing_ads.columns if ("Headline" in col or "Description" in col) and "position" not in col}
@@ -358,34 +330,23 @@ def main():
     if option == "Danish":
         edited_headlines = display_and_edit_templates(HEADLINES_DANISH, 30)
         edited_descriptions = display_and_edit_templates(DESCRIPTIONS_DANISH, 90)
-        filter_string = "RSA Variant: 1"  # Use Danish filter string
-        normal_filter_string = "Variant: Normal"
+        filter_string = "Variant: Tilbud"  # Use Danish filter string
     else:
         edited_headlines = display_and_edit_templates(HEADLINES_SWEDISH, 30)
         edited_descriptions = display_and_edit_templates(DESCRIPTIONS_SWEDISH, 90)
         filter_string = "AD-SALE"   # Use Swedish filter string
-        normal_filter_string = "AD-NORMAL"
 
     merge_type = st.selectbox("Choose Merge Type", ["Default", "Advanced"])
 
-    uploaded_file = st.text_input('Spreadsheet ID', help="Enter the ID of the Google Spreadsheet.")
+    uploaded_file = st.file_uploader("Choose an Excel file for New Ads", type="xlsx")
+    existing_ads_file = st.file_uploader("Choose an Excel file for Existing Ads", type="xlsx")
 
-    if uploaded_file:
-        spreadsheet = client.open_by_key(uploaded_file)
-        new_ads_sheet = spreadsheet.worksheet('new_ads')
-        existing_ads_sheet = spreadsheet.worksheet('existing_ads DK') if option == "Danish" else spreadsheet.worksheet('existing_ads SE')
+    if uploaded_file and existing_ads_file:
+        df_new_ads = pd.read_excel(uploaded_file)
+        df_existing_ads = pd.read_excel(existing_ads_file)
 
-        # Get all records of the data
-        data_new = new_ads_sheet.get_all_records()
-        data_existing = existing_ads_sheet.get_all_records()
-
-        # Convert to a DataFrame
-        df_new_ads = pd.DataFrame(data_new)
-
-        df_existing_ads = pd.DataFrame(data_existing)
-
-        df_new_ads,df_tilbud,df_normal = data_clean(df_new_ads,df_existing_ads,filter_string,normal_filter_string, edited_headlines, edited_descriptions)
-        st.write(df_new_ads,df_tilbud,df_normal)
+        df_new_ads,df_tilbud,df_normal = data_clean(df_new_ads,df_existing_ads,filter_string, edited_headlines, edited_descriptions)
+        
         df_merged,df_normal_merge = merging(df_new_ads,df_tilbud,df_normal,merge_type)
 
         # Display the merged DataFrame
@@ -395,18 +356,19 @@ def main():
 
         # Adding a button to download the merged dataframe as an Excel file
         # Adding a button to download the merged dataframe as an Excel file
-        advance_merge_sheet_name = 'Tilbud Merge DK' if option == 'Danish' else 'Tilbud Merge SE'
-        advance_merge_sheet = spreadsheet.worksheet(advance_merge_sheet_name)
-        advance_merge_sheet.clear()
-        advance_merge_sheet.insert_rows(df_merged.values.tolist(), row=1)
-        advance_merge_sheet.insert_row(df_merged.columns.tolist(), 1)
-
-        # Adding a button to download the merged dataframe as an Excel file
-        normal_merge_sheet_name = 'Normal Merge DK' if option == 'Danish' else 'Normal Merge SE'
-        normal_merge_sheet = spreadsheet.worksheet(normal_merge_sheet_name)
-        normal_merge_sheet.clear()
-        normal_merge_sheet.insert_rows(df_normal_merge.values.tolist(), row=1)
-        normal_merge_sheet.insert_row(df_normal_merge.columns.tolist(), 1)
+        if st.button('Download Data as Excel'):
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_merged.to_excel(writer, sheet_name='Merged', index=False)
+                df_normal_merge.to_excel(writer, sheet_name='Normal Merge', index=False)
+            output.seek(0)
+            
+            st.download_button(
+                label="Download Data as Excel",
+                data=output.getvalue(),
+                file_name='data.xlsx',
+                key='download_excel'
+            )
 
 if __name__ == "__main__":
     main()
