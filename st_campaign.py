@@ -79,8 +79,8 @@ HEADLINES_DANISH = {
         "{type} i Magasin",
     ],
     "Headline 8": lambda row: [
-        "Gäller fram till den 26/11" if row['period'] in ["10", 10,"15", 5,"3", 3] else
-        "Gäller bara idag Black Friday" if row['period'] == "bf" else
+        "Gælder frem til d. 26./11." if row['period'] in ["10", 10,"15", 5,"3", 3] else
+        "Gælder kun til Black Friday" if row['period'] == "bf" else
         ""
     ]
 }
@@ -363,7 +363,7 @@ def main():
     else:
         edited_headlines = display_and_edit_templates(HEADLINES_SWEDISH, 30)
         edited_descriptions = display_and_edit_templates(DESCRIPTIONS_SWEDISH, 90)
-        filter_string = "AD-SALE"   # Use Swedish filter string
+        filter_string = "RSA Variant: 1"   # Use Swedish filter string
         normal_filter_string = "AD-NORMAL"
 
     merge_type = st.selectbox("Choose Merge Type", ["Default", "Advanced"])
