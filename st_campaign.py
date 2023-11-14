@@ -63,23 +63,24 @@ HEADLINES_DANISH = {
         "Få {rabat}"
     ],
     "Headline 5": [
-        "{rabat} på {brand}",
-        "{rabat} i Magasin"
-    ],
-    "Headline 6": [
         "Tilbud på {brand} til {type}",
         "{type}-tilbud på {brand}",
         "{rabat} på {brand} til {type}",
         "Tilbud på masser af {brand}",
         "Tilbud til {type}",
     ],
-    "Headline 7": [
+    "Headline 6": [
         "Få {rabat} på {brand} i Magasin",
         "{rabat} på {brand} i Magasin",
         "{type} i Magasin",
     ],
+    "Headline 7": lambda row: [
+        "Black Week slutter om {GLOBAL_COUNTDOWN(2023-11-26 23:59:59,1)}" if row['period'] in ["10", 10,"5", 5,"3", 3] else
+        "Black Friday: {GLOBAL_COUNTDOWN(2023-11-24 23:59:59,1)} tilbage" if row['period'] == "bf" else
+        ""
+    ],
     "Headline 8": lambda row: [
-        "Gælder frem til d. 26./11." if row['period'] in ["10", 10,"15", 5,"3", 3] else
+        "Gælder frem til d. 26./11." if row['period'] in ["10", 10,"5", 5,"3", 3] else
         "Gælder kun til Black Friday" if row['period'] == "bf" else
         ""
     ]
@@ -116,11 +117,13 @@ HEADLINES_SWEDISH = {
         "{brand} på {type}",
         "{type}-erbjudanden",
     ],
-    "Headline 7": [  # Add more Swedish templates here
-        "{type} på Magasin.se",
+    "Headline 7": lambda row: [
+        "Black Week slutar om {GLOBAL_COUNTDOWN(2023-11-26 23:59:59,1)}" if row['period'] in ["10", 10,"5", 5,"3", 3] else
+        "BlackFriday slutar om {GLOBAL_COUNTDOWN(2023-11-24 23:59:59,1)}" if row['period'] == "bf" else
+        ""
     ],
     "Headline 8": lambda row: [
-        "Gäller fram till den 26/11" if row['period'] in ["10", 10,"15", 5,"3", 3] else
+        "Gäller fram till den 26/11" if row['period'] in ["10", 10,"5", 5,"3", 3] else
         "Gäller bara idag Black Friday" if row['period'] == "bf" else
         ""
     ]
