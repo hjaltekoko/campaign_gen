@@ -51,7 +51,7 @@ category_mapping = {
 # Initial templates
 HEADLINES_DANISH = {
     "Headline 2": [
-        "{rabat} til Juleshopping i Magasin",
+        "{rabat} til {type} i Magasin",
         "20-50% på masser af brands"
     ],
     "Headline 3": [
@@ -64,34 +64,33 @@ HEADLINES_DANISH = {
     ],
     "Headline 5": [
         "Tilbud på {brand} til {type}",
-        "Juleshopping-tilbud på {brand}",
-        "{rabat} på {brand} til Juleshopping",
+        "{type}-tilbud på {brand}",
+        "{rabat} på {brand} til {type}",
         "Tilbud på masser af {brand}",
-        "Tilbud til Juleshopping",
+        "Tilbud til {type}",
     ],
     "Headline 6": [
         "Få {rabat} på {brand} i Magasin",
         "{rabat} på {brand} i Magasin",
-        "Juleshopping i Magasin",
+        "{type} i Magasin",
     ],
     "Headline 7": lambda row: [
-        "Multiday" if row['period'] in ["4", 4] else
-        "One day" if row['period'] in ["1", 1] else
+    "Black Week" if row['period'] in ["10", 10, "5", 5, "3", 3] else
+    "Black Friday" if row['period'] == "bf" else
     ""
     ],
     "Headline 8": lambda row: [
-        "Gælder frem til d. 3./12." if row['period'] in ["4", 4] else
-        "Gælder kun i dag" if row['period'] in ["1", 1] else
+        "Gælder frem til d. 26./11." if row['period'] in ["10", 10,"5", 5,"3", 3] else
+        "Gælder kun til Black Friday" if row['period'] == "bf" else
         ""
     ]
 }
 DESCRIPTIONS_DANISH = {
     "Description 1": [
-        "Kom til Juleshopping i Magasin og få {rabat} på {brand} - {Headline 8}",
-        "Kom til Juleshopping i Magasin og få {rabat} på {brand}",
+        "Kom til {type} i Magasin og få {rabat} på {brand}",
     ],
     "Description 2": [
-        "Gælder kun 1-,2- og 3-stjernede Goodiemedlemmer",
+        "Lige nu får du {rabat} på {brand} - {Headline 8}",
     ],
 }
 HEADLINES_SWEDISH = {
@@ -111,41 +110,46 @@ HEADLINES_SWEDISH = {
         "Spara {rabat}",
     ],
     "Headline 5": [  # Add more Swedish templates here
-        "20% på i stort sett allt",
+        "{rabat} på {type}",
     ],
     "Headline 6": [  # Add more Swedish templates here
-        "{rabat} under julshoppingdagar",
+        "Köp {brand} på {type}",
+        "{brand} på {type}",
+        "{type}-erbjudanden",
     ],
     "Headline 7": lambda row: [
-        "Multiday" if row['period'] in ["10", 10,"5", 5,"3", 3] else
-        "One day" if row['period'] == "bf" else
+        "Black Week" if row['period'] in ["10", 10,"5", 5,"3", 3] else
+        "Black Friday" if row['period'] == "bf" else
         ""
     ],
     "Headline 8": lambda row: [
-        "Gäller fram till den 3/12" if row['period'] in ["10", 10,"5", 5,"3", 3] else
-        "Gäller bara idag" if row['period'] == "bf" else
+        "Gäller fram till den 26/11" if row['period'] in ["10", 10,"5", 5,"3", 3] else
+        "Gäller bara idag Black Friday" if row['period'] == "bf" else
         ""
     ]
 }
 DESCRIPTIONS_SWEDISH = {
     "Description 1": [
-        "Julshopping på Magasin.se med {rabat} på {brand}. Returrätt fram till den 24 januari.",
-        "Shoppa julklappar med 20% på i stort sett allt! Returrätt fram till den 24 januari."
+        "Just nu får du {rabat} på {brand} på Magasin.se",
     ],
     "Description 2": [
-        "Julshoppa på Magasin med 20% på i stort sett allt! *Exklusivt för aktiva goodiemedlemmar.",
+        "{type} är i gång med 20-50% på tusentals märkesvaror",
     ],
 }
 
 # Mapping for creating labels based on the 'period' column
 period_label_mapping = {
-    4: "vip_1_multi",
-    1: "vip_1_one",
+    10: "black_week_10",
+    5: "black_week_5",
+    3: "black_weekend_3",
+    'bf': "black_friday_1",
 }
 # Mapping for creating communication variable based on the 'period' column
 period_type_mapping = {
-    4: "T.o.m. søndag",
-    1: "Kun i dag",
+    10: "Black Week",
+    5: "Black Week",
+    3: "Black Weekend",
+    'bf': "Black Friday",
 }
 
 
@@ -243,26 +247,45 @@ def display_and_edit_templates(templates_dict, threshold):
             edited_templates.append(edited_template)
         edited_templates_dict[headline] = edited_templates
     return edited_templates_dict
-
+    
 def filter_rows(group):
     if len(group) == 1:  # If only one row in the group, keep it
         return group
     else:  # If more than one row in the group
         # 1. Prefer multi-day campaigns over one-day campaigns
-        non_one_day_group = group[~group['Labels'].str.contains('one', case=False, na=False)]
+        non_one_day_group = group[~group['Labels'].str.contains('black_friday', case=False, na=False)]
         if not non_one_day_group.empty:
-            # 3. Prefer specific percentages over "20-50%" within 10-day campaigns
-            specific_percentage_group = non_one_day_group[~non_one_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
-            if not specific_percentage_group.empty:
-                # 4. Prefer the lowest percentage within specific percentage 10-day campaigns
-                specific_percentage_group['numeric_percentage'] = specific_percentage_group['rabat'].str.rstrip('%').astype(float)
-                return specific_percentage_group.nsmallest(1, 'numeric_percentage')
+            # 2. Prefer 12-day campaigns over 5-day campaigns within multi-day campaigns
+            twelve_day_group = non_one_day_group[non_one_day_group['Labels'].str.contains('10', case=False, na=False)]
+            if not twelve_day_group.empty:
+                # 3. Prefer specific percentages over "20-50%" within 10-day campaigns
+                specific_percentage_group = twelve_day_group[~twelve_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
+                if not specific_percentage_group.empty:
+                    # 4. Prefer the lowest percentage within specific percentage 10-day campaigns
+                    specific_percentage_group['numeric_percentage'] = specific_percentage_group['rabat'].str.rstrip('%').astype(float)
+                    return specific_percentage_group.nsmallest(1, 'numeric_percentage')
+                else:
+                    return twelve_day_group
             else:
-                return non_one_day_group
+                # 3. Prefer specific percentages over "20-50%" within multi-day campaigns other than 10-day campaigns
+                specific_percentage_group = non_one_day_group[~non_one_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
+                return specific_percentage_group if not specific_percentage_group.empty else non_one_day_group
         else:
-            # 3. Prefer specific percentages over "20-50%" within one-day campaigns other than 12-day campaigns
-            specific_percentage_group = group[~group['rabat'].str.contains('20-50%', case=False, na=False)]
-            return specific_percentage_group if not specific_percentage_group.empty else group
+            # 2. Prefer 10-day campaigns over 5-day campaigns within one-day campaigns
+            twelve_day_group = group[group['Labels'].str.contains('10', case=False, na=False)]
+            if not twelve_day_group.empty:
+                # 3. Prefer specific percentages over "20-50%" within 12-day one-day campaigns
+                specific_percentage_group = twelve_day_group[~twelve_day_group['rabat'].str.contains('20-50%', case=False, na=False)]
+                if not specific_percentage_group.empty:
+                    # 4. Prefer the lowest percentage within specific percentage 12-day one-day campaigns
+                    specific_percentage_group['numeric_percentage'] = specific_percentage_group['rabat'].str.rstrip('%').astype(float)
+                    return specific_percentage_group.nsmallest(1, 'numeric_percentage')
+                else:
+                    return twelve_day_group
+            else:
+                # 3. Prefer specific percentages over "20-50%" within one-day campaigns other than 12-day campaigns
+                specific_percentage_group = group[~group['rabat'].str.contains('20-50%', case=False, na=False)]
+                return specific_percentage_group if not specific_percentage_group.empty else group
 
 def merging(df_new_ads,df_tilbud,df_normal,merge_type):
     df_merged = pd.merge(df_tilbud.assign(temp_key=df_tilbud['Ad Group'].str.lower()), 
