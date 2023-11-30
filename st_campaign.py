@@ -117,13 +117,13 @@ HEADLINES_SWEDISH = {
         "{rabat} under julshoppingdagar",
     ],
     "Headline 7": lambda row: [
-        "Multiday" if row['period'] in ["10", 10,"5", 5,"3", 3] else
-        "One day" if row['period'] == "bf" else
+        "Multiday" if row['period'] in ["4", 4] else
+        "One day" if row['period'] in ["1", 1] else
         ""
     ],
     "Headline 8": lambda row: [
-        "Gäller fram till den 3/12" if row['period'] in ["10", 10,"5", 5,"3", 3] else
-        "Gäller bara idag" if row['period'] == "bf" else
+        "Gäller fram till den 3/12" if row['period'] in ["4", 4] else
+        "Gäller bara idag" if row['period'] in ["1", 1] else
         ""
     ]
 }
