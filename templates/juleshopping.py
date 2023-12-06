@@ -91,7 +91,7 @@ DESCRIPTIONS_DANISH = {
         "Kom til Juleshopping i Magasin og få {rabat} på {brand}",
     ],
     "Description 2": [
-        "Gælder kun Goodie-stjernemedlemmer",
+        "Gælder kun 1-,2- og 3-stjernede Goodiemedlemmer",
     ],
 }
 HEADLINES_SWEDISH = {
