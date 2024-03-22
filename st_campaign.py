@@ -51,7 +51,7 @@ category_mapping = {
 # Initial templates
 HEADLINES_DANISH = {
     "Headline 2": [
-        "{rabat} til Juleshopping i Magasin",
+        "{rabat} til Super Bazaar i Magasin",
         "20-50% på masser af brands"
     ],
     "Headline 3": [
@@ -63,35 +63,37 @@ HEADLINES_DANISH = {
         "Få {rabat}"
     ],
     "Headline 5": [
-        "Tilbud på {brand} til {type}",
-        "Juleshopping-tilbud på {brand}",
-        "{rabat} på {brand} til Juleshopping",
-        "Tilbud på masser af {brand}",
-        "Tilbud til Juleshopping",
+        "{rabat} på {brand}",
+        "{rabat} i Magasin"
     ],
     "Headline 6": [
-        "Få {rabat} på {brand} i Magasin",
-        "{rabat} på {brand} i Magasin",
-        "Juleshopping i Magasin",
+        "Tilbud på {brand} til Super Bazaar",
+        "Super Bazaar-tilbud på {brand}",
+        "{rabat} på {brand} til Super Bazaar",
+        "Tilbud på masser af {brand}",
+        "Tilbud til Super Bazaar",
     ],
     "Headline 7": lambda row: [
-        "Multiday" if row['period'] in ["4", 4] else
-        "One day" if row['period'] in ["1", 1] else
+        "Multiday" if row['period'] in [14, 7] else
+        "One day" if row['period'] in ["Torsdag","Fredag","Lørdag","Søndag"] else
     ""
     ],
     "Headline 8": lambda row: [
-        "Gælder frem til d. 10./12." if row['period'] in ["4", 4] else
-        "Gælder kun i dag" if row['period'] in ["1", 1] else
+        "Gælder til d. 3./4." if row['period'] in ["14", 14] else
+        "Gælder til d. 27./3." if row['period'] in ["7", 7] else
+        "Gælder kun d. 21." if row['period'] == "Torsdag" else
+        "Gælder kun d. 22." if row['period'] == "Fredag" else
+        "Gælder kun d. 23." if row['period'] == "Lørdag" else
+        "Gælder kun d. 24." if row['period'] == "Søndag" else
         ""
     ]
 }
 DESCRIPTIONS_DANISH = {
     "Description 1": [
-        "Kom til Juleshopping i Magasin og få {rabat} på {brand} - {Headline 8}",
-        "Kom til Juleshopping i Magasin og få {rabat} på {brand}",
+        "Kom til Super Bazaar i Magasin og få {rabat} på {brand}",
     ],
     "Description 2": [
-        "Gælder kun Goodie-stjernemedlemmer",
+        "Lige nu får du {rabat} på {brand} - {Headline 8}",
     ],
 }
 HEADLINES_SWEDISH = {
@@ -111,36 +113,45 @@ HEADLINES_SWEDISH = {
         "Spara {rabat}",
     ],
     "Headline 5": [  # Add more Swedish templates here
-        "20% på i stort sett allt",
+        "{rabat} på Mid Season Sale",
     ],
     "Headline 6": [  # Add more Swedish templates here
-        "{rabat} under julshoppingdagar",
+        "Köp {brand} på Mid Season Sale",
+        "{brand} på Mid Season Sale",
+        "Mid Season Sale-erbjudanden",
     ],
     "Headline 7": lambda row: [
-        "Multiday" if row['period'] in ["4", 4] else
-        "One day" if row['period'] in ["1", 1] else
-        ""
+        "Multiday" if row['period'] in [14, 7] else
+        "One day" if row['period'] in ["Torsdag","Fredag","Lørdag","Søndag"] else
+    ""
     ],
     "Headline 8": lambda row: [
-        "Gäller fram till den 10/12" if row['period'] in ["4", 4] else
-        "Gäller bara idag" if row['period'] in ["1", 1] else
+        "Gäller fram till den 3/4" if row['period'] in ["14", 14] else
+        "Gäller fram till den 27/3" if row['period'] in ["7", 7] else
+        "Gäller bara idag den 21/3" if row['period'] == "Torsdag" else
+        "Gäller bara idag den 22/3" if row['period'] == "Fredag" else
+        "Gäller bara idag den 23/3" if row['period'] == "Lørdag" else
+        "Gäller bara idag den 24/3" if row['period'] == "Søndag" else
         ""
     ]
 }
 DESCRIPTIONS_SWEDISH = {
     "Description 1": [
-        "Julshopping på Magasin.se med {rabat} på {brand}. Returrätt fram till den 24 januari.",
-        "Shoppa julklappar med 20% på i stort sett allt! Returrätt fram till den 24 januari."
+        "Just nu får du {rabat} på {brand} på Magasin.se",
     ],
     "Description 2": [
-        "Julshoppa på Magasin med 20% på i stort sett allt! *Exklusivt för aktiva goodiemedlemmar.",
+        "Mid Season Sale är i gång med 20-50% på tusentals märkesvaror",
     ],
 }
 
 # Mapping for creating labels based on the 'period' column
 period_label_mapping = {
-    4: "vip_2_multi",
-    1: "vip_2_one",
+    14: "sb_14_day",
+    7: "sb_7_day",
+    "Torsdag": "sb_tor_oneday",
+    "Fredag": "sb_fre_oneday",
+    "Lørdag": "sb_loer_oneday",
+    "Søndag": "sb_soen_oneday"
 }
 # Mapping for creating communication variable based on the 'period' column
 period_type_mapping = {
@@ -287,7 +298,10 @@ def merging(df_new_ads,df_tilbud,df_normal,merge_type):
         for _, row1 in df_tilbud_unmatched.iterrows():
             for _, row2 in df_new_ads_unmatched.iterrows():
                 if len(row1['brand_words'].intersection(row2['brand_words'])) > 0:
-                    merged_row = row1.drop('brand_words').append(row2.drop('brand_words'))
+                    # Merge the Series by creating a new one from the union of both
+                    # Use `.drop` to exclude 'brand_words' and then use `pd.concat` to concatenate the remaining parts
+                    merged_row = pd.concat([row1.drop('brand_words'), row2.drop('brand_words')])
+                    # Append the merged_row Series to your list of merged rows
                     merged_rows.append(merged_row)
         
         # Construct the merged DataFrame from complex match
@@ -305,7 +319,7 @@ def merging(df_new_ads,df_tilbud,df_normal,merge_type):
     # Step 3: Combine 'Labels#original' and 'Labels' columns
     df_merged['Labels'] = df_merged.apply(lambda row: f"{row['Labels#original']};{row['Labels']}" if pd.notnull(row['Labels#original']) else row['Labels'], axis=1)
     
-    df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','numeric_percentage','temp_key','type'], inplace=True)
+    df_merged.drop(columns=['brand', 'SubCategory', 'rabat', 'period','temp_key','type'], inplace=True)
 
     return df_merged,df_normal_merge
 
@@ -322,7 +336,7 @@ def data_clean(df_new_ads,df_existing_ads,filter_string,normal_filter_string, ed
 
         df_new_ads.rename(columns={"label": "Labels"}, inplace=True)
 
-        df_new_ads = df_new_ads.groupby(['brand']).apply(filter_rows).reset_index(drop=True)
+        #df_new_ads = df_new_ads.groupby(['brand']).apply(filter_rows).reset_index(drop=True)
         
         # Step 1: Rename the 'label' column in the original ads DataFrame
         df_tilbud.rename(columns={"Labels": "Labels#original"}, inplace=True)
